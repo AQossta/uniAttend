@@ -1,0 +1,15 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: uniAttend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/uniattend
+    username: postgres
+    password: erke
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: none
+    show-sql: true
