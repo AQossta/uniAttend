@@ -1,6 +1,5 @@
 package kz.enu.uniAttend.service;
 
-
 import kz.enu.uniAttend.exception.UserNotFoundException;
 import kz.enu.uniAttend.model.entity.User;
 import kz.enu.uniAttend.repository.UserRepository;
@@ -15,11 +14,9 @@ public class UserService {
         userRepository.save(user);
     }
     public boolean existsByUsername(String userName) {
-        if(!userRepository.existsByUserName(userName)) {
-            throw new UserNotFoundException();
-        }
-        return true;
+        return userRepository.existsByUserName(userName);
     }
+
     public User getByUserName(String userName) {
         return userRepository.findByUserName(userName)
                 .orElseThrow(UserNotFoundException::new);
