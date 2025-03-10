@@ -5,7 +5,7 @@ public class BCryptPasswordEncoder implements PasswordEncoder {
 
     @Override
     public String hash(String password) {
-        int saltRound = 10;
+        int saltRound = 12;
         String salt = BCrypt.gensalt(saltRound);
         return BCrypt.hashpw(password, salt);
     }

@@ -5,10 +5,16 @@ CREATE TABLE t_groups (
     date_registration DATE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS t_images (
+    id                  BIGSERIAL NOT NULL,
+    image_path          VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
 -- Роли пользователей
 CREATE TABLE t_roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(20) NOT NULL
+    role_name VARCHAR(20) NOT NULL
 );
 
 -- Предметы
@@ -17,18 +23,22 @@ CREATE TABLE t_subjects (
     name VARCHAR(50) NOT NULL
 );
 
--- Пользователи
-CREATE TABLE t_users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    name VARCHAR(50) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(20) NOT NULL,
-    birthday DATE NOT NULL,
+CREATE TABLE IF NOT EXISTS t_users
+(
+    id                  BIGSERIAL       NOT NULL,
+    user_name           VARCHAR(40)     NOT NULL,
+    password            VARCHAR(256)    NOT NULL,
+    email               VARCHAR(70)     NOT NULL,
+    birthday DATE,
+    phone_number        VARCHAR(15)     NOT NULL,
+    registration_date   TIMESTAMP       NOT NULL DEFAULT current_timestamp,
+    email_verified      BOOLEAN         NOT NULL,
+    image_id            BIGINT          NULL,
     group_id INT,
-    role_id INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (image_id) REFERENCES t_images(id) ON DELETE SET NULL, -- Убираем CASCADE
     FOREIGN KEY (group_id) REFERENCES t_groups(id) ON DELETE SET NULL,
-    FOREIGN KEY (role_id) REFERENCES t_roles(id) ON DELETE CASCADE
+    UNIQUE (email, phone_number)
 );
 
 -- Расписания
@@ -140,3 +150,69 @@ CREATE TABLE t_invites (
     user_id INT,
     FOREIGN KEY (user_id) REFERENCES t_users(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS t_user_roles
+(
+    id          BIGSERIAL               NOT NULL,
+    user_id     BIGINT                  NOT NULL,
+    role_id     BIGINT                  NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES t_users (id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES t_roles (id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS t_organization (
+    bin                 CHAR(12) NOT NULL, -- Уникальный бизнес-идентификационный номер
+    organization_name   VARCHAR(255) NOT NULL, -- Название организации
+    email               VARCHAR(254) NOT NULL, -- Email
+    owner_name          VARCHAR(255) NOT NULL, -- Имя владельца
+    phone_number        VARCHAR(15) NOT NULL, -- Номер телефона
+    registration_date   TIMESTAMP NOT NULL DEFAULT current_timestamp, -- Дата регистрации
+    website_link        VARCHAR(255) NOT NULL, -- Ссылка на сайт
+    address             TEXT NOT NULL, -- Полный адрес
+    image_id            BIGINT NULL, -- Идентификатор изображения
+    PRIMARY KEY (bin), -- БИН используется как первичный ключ
+    FOREIGN KEY (image_id) REFERENCES t_images(id) ON DELETE SET NULL,
+    UNIQUE (email, phone_number) -- Уникальные ограничения
+);
+
+INSERT INTO t_roles (id, role_name)
+VALUES
+    (1, 'admin'),
+    (2, 'user'),
+    (3, 'teacher'),
+    (4, 'student');
+
+
+
+INSERT INTO t_users (id, user_name, password, email, phone_number, registration_date, email_verified)
+VALUES
+    (1, 'Azhar', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Azhar@gmail.com', '+77011112235', CURRENT_TIMESTAMP, false),
+    (2, 'Yerkebulan', '$2a$12$TxN7SBjj.MbnlQz9mnDA2e8dbEq7bZsPH5P7cNBKlukBnq3VukVFW', 'erkebulanzholdaskali@gmail.com', '+77478708845', CURRENT_TIMESTAMP, false),
+    (3, 'Uchenik', '$2a$12$pBTccEPl6OZXXxCqT8PyPOW/WDLbAsTpFziKjYIVK.1PzoreTMq9S', 'Uchenik@gmail.com', '+77011112233', CURRENT_TIMESTAMP, false),
+    (4, 'student', '$2a$12$kDfjYF/Pc1j8Ky1i0f6RX.Du0zJfS4ZqnCTca.K72U4EuymNd2Qpu', 'student@gmail.com', '+77011112234', CURRENT_TIMESTAMP, false);
+
+INSERT INTO t_user_roles (id, user_id, role_id)
+VALUES
+    (1, 1, 1),
+    (2, 2, 1),
+    (3, 3, 3),
+    (4, 4, 4);
+
+INSERT INTO t_organization (
+    bin, organization_name, email, owner_name, phone_number, website_link, address
+) VALUES (
+             '1',
+             'EURASIAN NATIONAL UNIVERSITY',
+             'enu@enu.kz',
+             'Бастрыкин Олег Викторович',
+             '+7(7172)709500',
+             'https://enu.kz/ru/',
+             'г.Астана, ул. Сатпаева, 2'
+);
+
+
+SELECT setval(pg_get_serial_sequence('t_users', 'id'), 5, false);
+
+SELECT setval(pg_get_serial_sequence('t_user_roles', 'id'), 5, false);

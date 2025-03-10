@@ -16,14 +16,14 @@ public class AuthenticationController {
     //регистрация
     @PostMapping("/register")
     public MessageResponse<String> register(@RequestBody RegisterRequest registerRequest) {
-        return MessageResponse.empty(authenticationService.register(registerRequest.getUserName(), registerRequest.getPassword()));
+        return MessageResponse.empty(authenticationService.register(registerRequest));
     }
 
 
     //логин
     @PostMapping("/login")
     public MessageResponse<String> login(@RequestBody RegisterRequest registerRequest) {
-        return MessageResponse.empty(authenticationService.login(registerRequest.getUserName(), registerRequest.getPassword()));
+        return MessageResponse.empty(authenticationService.login(registerRequest));
     }
 
     //выход
