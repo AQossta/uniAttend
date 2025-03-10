@@ -17,4 +17,8 @@ public class Subject {
 
     @Column(name = "name", nullable = false, length = 50)
     private String name;
+
+    public Subject(String name) {
+        this.name = name;
+    }
 }

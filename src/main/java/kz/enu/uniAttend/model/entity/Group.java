@@ -20,5 +20,5 @@ public class Group {
     private String name;
 
     @Column(name = "date_registration", nullable = false)
-    private LocalDate dateRegistration;
+    private LocalDate dateRegistration = LocalDate.now();
 }

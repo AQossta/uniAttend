@@ -23,3 +23,18 @@ springdoc:
 app:
   security:
     salt-rounds: 12
+
+
+# ???? ?????????????
+userRoles:
+  admin: admin
+  user: user
+  teacher: teacher
+  student: student
+
+api:
+  path:
+    admin: /api/v1/admin
+    user: /api/v1/user
+    teacher: /api/v1/teacher
+    student: /api/v1/student

@@ -1,15 +1,18 @@
 package kz.enu.uniAttend.service;
 
+import jakarta.transaction.Transactional;
 import kz.enu.uniAttend.exception.UserNotFoundException;
 import kz.enu.uniAttend.model.entity.User;
+import kz.enu.uniAttend.model.request.user.UserDefaultUpdateRequest;
 import kz.enu.uniAttend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
-    @Autowired
-    private UserRepository userRepository;
+    private final  UserRepository userRepository;
+
     public void saveUser(User user) {
         userRepository.save(user);
     }
@@ -40,5 +43,13 @@ public class UserService {
 
     public User getByUserEmail(String email) {
         return userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+    }
+
+    @Transactional
+    public String updateNameOrNumber(UserDefaultUpdateRequest request) {
+        User user = userRepository.findById(request.getUserId()).orElseThrow(UserNotFoundException::new);
+        user.setUserName(request.getUserName());
+        user.setPhoneNumber(request.getPhone());
+        return "Изменение успешно";
     }
 }

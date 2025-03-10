@@ -27,7 +27,7 @@ public class SessionService {
         String token = tokenGenerator.generate();
         session.setToken(token);
         session.setUser(userService.getByUserId(userId));
-        session.setExpiration(LocalDateTime.now().plusMinutes(1));
+        session.setExpiration(LocalDateTime.now().plusMinutes(120));
         return sessionRepository.save(session);
     }
 
@@ -58,5 +58,10 @@ public class SessionService {
         if(activeSessions.size() > maxCountActiveSessions) {
             activeSessions.stream().min(Comparator.comparing(Session::getExpiration)).ifPresent(olderSession -> sessionRepository.delete(olderSession));
         }
+    }
+
+    public Session getSessionByToken(String token) {
+        return sessionRepository.findByToken(token)
+                .orElseThrow(SessionNotFoundException::new);
     }
 }
