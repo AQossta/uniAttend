@@ -13,9 +13,9 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("API qasqir-inventory-api Documentation")
+                        .title("UniAttend API")
                         .version("v1")
-                        .description("Это API документ qasqir-inventory-api"));
+                        .description("Документация API для UniAttend"));
     }
 
     @Bean
@@ -26,3 +26,4 @@ public class SwaggerConfig {
                 .build();
     }
 }
+

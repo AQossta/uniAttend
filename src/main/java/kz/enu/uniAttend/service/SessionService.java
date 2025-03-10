@@ -22,14 +22,13 @@ public class SessionService {
     private TokenGenerator tokenGenerator;
     @Autowired
     private UserService userService;
-    public String generateForUser(Long userId) {
+    public Session generateForUser(Long userId) {
         Session session = new Session();
         String token = tokenGenerator.generate();
         session.setToken(token);
         session.setUser(userService.getByUserId(userId));
         session.setExpiration(LocalDateTime.now().plusMinutes(1));
-        sessionRepository.save(session);
-        return token;
+        return sessionRepository.save(session);
     }
 
     public boolean checkSession(String token) {

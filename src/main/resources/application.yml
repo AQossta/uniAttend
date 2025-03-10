@@ -13,3 +13,13 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  security:
+    salt-rounds: 12

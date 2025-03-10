@@ -5,7 +5,9 @@ import kz.enu.uniAttend.exception.InvalidPasswordException;
 import kz.enu.uniAttend.exception.UserAlreadyExistsException;
 import kz.enu.uniAttend.model.entity.Group;
 import kz.enu.uniAttend.model.entity.Role;
+import kz.enu.uniAttend.model.entity.Session;
 import kz.enu.uniAttend.model.entity.User;
+import kz.enu.uniAttend.model.request.LoginRequest;
 import kz.enu.uniAttend.model.request.RegisterRequest;
 import kz.enu.uniAttend.repository.GroupRepository;
 import kz.enu.uniAttend.repository.RoleRepository;
@@ -44,24 +46,27 @@ public class AuthenticationService {
         }
     }
 
-    public String login(RegisterRequest registerRequest) {
-        if(userService.existsByUserEmail(registerRequest.getEmail())) {
-            User user = userService.getByUserName(registerRequest.getName());
-            String passwordMatches = user.getPassword();
-            Long userId = user.getId();
-            if(passwordEncoder.check(registerRequest.getPassword(), passwordMatches)) {
-                sessionService.manageCountSession(userId);
-                return sessionService.generateForUser(userId);
-            } else {
-                throw new InvalidPasswordException();
-            }
-        } else {
-            throw new AuthenticationErrorException();
+    public Session login(String email, String password) {
+        try {
+            User user = userService.getByUserEmail(email);
+            validatePassword(password, user.getPassword());
+            sessionService.manageCountSession(user.getId());
+            return sessionService.generateForUser(user.getId());
+        } catch (InvalidPasswordException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось выполнить вход, попробуйте позже.");
         }
     }
 
     public boolean logout(String token)  {
         return sessionService.invalidate(token);
+    }
+
+    private void validatePassword(String rawPassword, String hashedPassword) {
+        if (!passwordEncoder.check(rawPassword, hashedPassword)) {
+            throw new InvalidPasswordException();
+        }
     }
 }
 

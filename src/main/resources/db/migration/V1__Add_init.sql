@@ -177,21 +177,20 @@ CREATE TABLE IF NOT EXISTS t_organization (
     UNIQUE (email, phone_number) -- Уникальные ограничения
 );
 
-INSERT INTO t_roles (id, role_name)
-VALUES
-    (1, 'admin'),
-    (2, 'user'),
-    (3, 'teacher'),
-    (4, 'student');
-
-
-
 INSERT INTO t_users (id, user_name, password, email, phone_number, registration_date, email_verified)
 VALUES
     (1, 'Azhar', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Azhar@gmail.com', '+77011112235', CURRENT_TIMESTAMP, false),
     (2, 'Yerkebulan', '$2a$12$TxN7SBjj.MbnlQz9mnDA2e8dbEq7bZsPH5P7cNBKlukBnq3VukVFW', 'erkebulanzholdaskali@gmail.com', '+77478708845', CURRENT_TIMESTAMP, false),
     (3, 'Uchenik', '$2a$12$pBTccEPl6OZXXxCqT8PyPOW/WDLbAsTpFziKjYIVK.1PzoreTMq9S', 'Uchenik@gmail.com', '+77011112233', CURRENT_TIMESTAMP, false),
     (4, 'student', '$2a$12$kDfjYF/Pc1j8Ky1i0f6RX.Du0zJfS4ZqnCTca.K72U4EuymNd2Qpu', 'student@gmail.com', '+77011112234', CURRENT_TIMESTAMP, false);
+
+
+INSERT INTO t_roles (id, role_name)
+VALUES
+    (1, 'admin'),
+    (2, 'user'),
+    (3, 'teacher'),
+    (4, 'student');
 
 INSERT INTO t_user_roles (id, user_id, role_id)
 VALUES
@@ -212,7 +211,12 @@ INSERT INTO t_organization (
              'г.Астана, ул. Сатпаева, 2'
 );
 
+INSERT INTO t_groups (name, date_registration) VALUES
+    ('Group A-101', '2023-09-01'),
+    ('Group E-505', '2025-02-28');
 
 SELECT setval(pg_get_serial_sequence('t_users', 'id'), 5, false);
 
 SELECT setval(pg_get_serial_sequence('t_user_roles', 'id'), 5, false);
+
+SELECT setval(pg_get_serial_sequence('t_groups', 'id'), 3, false);
