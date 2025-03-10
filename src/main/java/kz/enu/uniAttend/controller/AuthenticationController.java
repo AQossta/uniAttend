@@ -1,5 +1,6 @@
 package kz.enu.uniAttend.controller;
 
+import kz.enu.uniAttend.model.DTO.UserDTO;
 import kz.enu.uniAttend.model.entity.Session;
 import kz.enu.uniAttend.model.request.LoginRequest;
 import kz.enu.uniAttend.model.request.RegisterRequest;
@@ -25,11 +26,9 @@ public class AuthenticationController {
 
     //логин
     @PostMapping("/sign-in")
-    public ResponseEntity<MessageResponse<?>> login(@RequestBody LoginRequest loginRequest) {
+    public MessageResponse<UserDTO> login(@RequestBody LoginRequest loginRequest) {
 //        return MessageResponse.of(authenticationService.login(registerRequest.getUserName(), registerRequest.getPassword()));
-        Session session = authenticationService.login(loginRequest.getEmail(), loginRequest.getPassword());
-        String token = session.getToken();
-        return ResponseEntity.ok().header("auth-token", token).body(MessageResponse.empty("Успешный вход!!!"));
+        return MessageResponse.of(authenticationService.login(loginRequest.getEmail(), loginRequest.getPassword()));
     }
 
     //выход

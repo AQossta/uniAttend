@@ -17,4 +17,8 @@ public class Role {
 
     @Column(name = "role_name", nullable = false, length = 20)
     private String name;
+
+    public String getRoleName() {
+        return name;
+    }
 }

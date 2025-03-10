@@ -15,14 +15,12 @@ public class QrCodeController {
     private final QrCodeService qrCodeService;
 
     @PostMapping("/generate")
-    public MessageResponse<?> generateQrCode(@RequestParam Long scheduleId) throws Exception {
-            String qrCodeBase64 = qrCodeService.generateQrCode(scheduleId);
-            return MessageResponse.of(qrCodeBase64);
+    public MessageResponse<String> generateQrCode(@RequestParam Long scheduleId) throws Exception {
+            return MessageResponse.of(qrCodeService.generateQrCode(scheduleId));
     }
 
     @GetMapping("/get")
-    public ResponseEntity<?> getQrCode(@RequestParam Long scheduleId) throws Exception {
-            String qrCodeBase64 = qrCodeService.getQrCode(scheduleId);
-            return ResponseEntity.ok(qrCodeBase64);
+    public MessageResponse<String> getQrCode(@RequestParam Long scheduleId) throws Exception {
+            return MessageResponse.of(qrCodeService.getQrCode(scheduleId));
     }
 }

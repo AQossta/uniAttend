@@ -27,14 +27,10 @@ public class QrCodeService {
 
 
     public String generateQrCode(Long scheduleId) throws Exception {
-        // Проверка существования расписания
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new Exception("Schedule not found"));
 
-        // Генерация уникального контента для QR-кода
         String qrContent = "schedule:" + scheduleId + ":" + UUID.randomUUID().toString();
-
-        // Создание QR-кода с помощью ZXing
         BitMatrix bitMatrix = new QRCodeWriter().encode(
                 qrContent,
                 BarcodeFormat.QR_CODE,
@@ -46,14 +42,12 @@ public class QrCodeService {
         MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
         String qrCodeBase64 = Base64.getEncoder().encodeToString(pngOutputStream.toByteArray());
 
-        // Сохранение QR-кода в базе
         QRCode qrCode = new QRCode();
         qrCode.setQrCode(qrCodeBase64);
         qrCode.setCreatedAt(LocalDateTime.now());
         qrCode.setExpiration(LocalDateTime.now().plusMinutes(QR_EXPIRATION_MINUTES));
         qrCodeRepository.save(qrCode);
 
-        // Связывание QR-кода с расписанием
         QRForSchedule qrForSchedule = new QRForSchedule();
         qrForSchedule.setSchedule(scheduleRepository.findById(scheduleId).orElseThrow(() -> new RuntimeException("Schedule not found")));
         qrForSchedule.setQrCode(qrCodeRepository.findById(qrCode.getId()).orElseThrow(() -> new RuntimeException("QR not found")));
@@ -64,25 +58,20 @@ public class QrCodeService {
 
 
     public String getQrCode(Long scheduleId) throws Exception {
-        // Проверка существования расписания
         scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new Exception("Schedule not found"));
 
-        // Находим связь QR-кода с расписанием
         QRForSchedule qrForSchedule = qrForScheduleRepository.findByScheduleId(scheduleId)
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new Exception("No QR code found for this schedule"));
 
-        // Получаем сам QR-код
         QRCode qrCode = qrForSchedule.getQrCode();
 
-        // Проверяем, не истек ли срок действия QR-кода
         if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
             throw new Exception("QR code has expired");
         }
 
-        // Возвращаем Base64-строку QR-кода
         return qrCode.getQrCode();
     }
 }
