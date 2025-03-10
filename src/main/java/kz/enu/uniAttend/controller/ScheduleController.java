@@ -1,5 +1,6 @@
 package kz.enu.uniAttend.controller;
 
+import kz.enu.uniAttend.model.DTO.ScheduleDTO;
 import kz.enu.uniAttend.model.entity.Schedule;
 import kz.enu.uniAttend.model.request.ScheduleRequest;
 import kz.enu.uniAttend.model.response.MessageResponse;
@@ -19,29 +20,25 @@ public class ScheduleController {
 
     @PostMapping("teacher/schedule/create")
 //    @PreAuthorize("hasRole('TEACHER')")
-    public MessageResponse<?> createSchedule(@RequestBody ScheduleRequest request) throws Exception {
-        Schedule schedule = scheduleService.createSchedule(request);
-        return MessageResponse.of(schedule);
+    public MessageResponse<String> createSchedule(@RequestBody ScheduleRequest request) throws Exception {
+        return MessageResponse.of(scheduleService.createSchedule(request));
     }
 
     @GetMapping("student/schedule/{scheduleId}")
 //    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     public MessageResponse<?> getScheduleById(@PathVariable Long scheduleId) throws Exception {
-        Schedule schedule = scheduleService.getScheduleById(scheduleId);
-        return MessageResponse.of(schedule);
+        return MessageResponse.of(scheduleService.getScheduleById(scheduleId));
     }
 
     @GetMapping("student/schedule/group/{groupId}")
 //    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    public MessageResponse<?> getSchedulesByGroup(@PathVariable Long groupId) {
-        List<Schedule> schedules = scheduleService.getSchedulesByGroup(groupId);
-        return MessageResponse.of(schedules);
+    public MessageResponse<List<ScheduleDTO>> getSchedulesByGroup(@PathVariable Long groupId) {
+        return MessageResponse.of(scheduleService.getSchedulesByGroup(groupId));
     }
 
     @GetMapping("teacher/schedule/lecturer/{lecturerId}")
 //    @PreAuthorize("hasRole('TEACHER')")
-    public ResponseEntity<?> getSchedulesByLecturer(@PathVariable Long lecturerId) {
-        List<Schedule> schedules = scheduleService.getSchedulesByLecturer(lecturerId);
-        return ResponseEntity.ok(schedules);
+    public MessageResponse<List<ScheduleDTO>> getSchedulesByLecturer(@PathVariable Long lecturerId) {
+        return MessageResponse.of(scheduleService.getSchedulesByLecturer(lecturerId));
     }
 }

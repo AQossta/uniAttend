@@ -1,5 +1,6 @@
 package kz.enu.uniAttend.service;
 
+import kz.enu.uniAttend.model.DTO.ScheduleDTO;
 import kz.enu.uniAttend.model.entity.Group;
 import kz.enu.uniAttend.model.entity.Schedule;
 import kz.enu.uniAttend.model.entity.Subject;
@@ -22,7 +23,7 @@ public class ScheduleService {
     private final SubjectRepository subjectRepository;
     private final GroupRepository groupRepository;
 
-    public Schedule createSchedule(ScheduleRequest request) throws Exception {
+    public String createSchedule(ScheduleRequest request) throws Exception {
         Subject subject = subjectRepository.findById(request.getSubjectId())
                 .orElseThrow(() -> new Exception("Subject not found"));
         User lecturer = userRepository.findById(request.getLecturerId())
@@ -41,20 +42,34 @@ public class ScheduleService {
         schedule.setGroup(group);
         schedule.setLecturer(lecturer);
 
-        return scheduleRepository.save(schedule);
+        scheduleRepository.save(schedule);
+        return "Предмет успешно добавлен в расписание";
     }
 
-    public Schedule getScheduleById(Long scheduleId) throws Exception {
-        return scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new Exception("Schedule not found"));
+    public ScheduleDTO getScheduleById(Long scheduleId) throws Exception {
+        return convertToScheduleDTO(scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new Exception("Schedule not found")));
     }
 
-    public List<Schedule> getSchedulesByGroup(Long groupId) {
-        return scheduleRepository.findByGroupId(groupId);
+    public List<ScheduleDTO> getSchedulesByGroup(Long groupId) {
+        return scheduleRepository.findByGroupId(groupId).stream().map(this::convertToScheduleDTO).toList();
     }
 
-    public List<Schedule> getSchedulesByLecturer(Long lecturerId) {
-        return scheduleRepository.findByLecturerId(lecturerId);
+    public List<ScheduleDTO> getSchedulesByLecturer(Long lecturerId) {
+        return scheduleRepository.findByLecturerId(lecturerId).stream().map(this::convertToScheduleDTO).toList();
     }
+
+    private ScheduleDTO convertToScheduleDTO(Schedule schedule) {
+        return new ScheduleDTO(schedule.getId(), schedule.getSubject().getName(), schedule.getStartTime(), schedule.getEndTime(), schedule.getGroup().getId(), schedule.getLecturer().getId(), schedule.getLecturer().getUserName(), schedule.getGroup().getName());
+    }
+//
+//    private Long id;
+//    private String subject;
+//    private LocalDateTime startTime;
+//    private LocalDateTime endTime;
+//    private Long groupId;
+//    private Long teacherId;
+//    private String teacherName;
+//    private String groupName;
 }
 
