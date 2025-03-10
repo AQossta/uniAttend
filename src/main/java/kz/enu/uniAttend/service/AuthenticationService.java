@@ -52,14 +52,22 @@ public class AuthenticationService {
     public UserDTO login(String email, String password) {
         try {
             User user = userService.getByUserEmail(email);
+            if (user == null) {
+                throw new RuntimeException("Пользователь с таким email не найден.");
+            }
+
             validatePassword(password, user.getPassword());
+
             sessionService.manageCountSession(user.getId());
-            return convertToDTO(user, sessionService.generateForUser(user.getId()).getToken());
+            String token = sessionService.generateForUser(user.getId()).getToken();
+            return convertToDTO(user, token);
+
         } catch (InvalidPasswordException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Не удалось выполнить вход, попробуйте позже.");
+            throw new RuntimeException("Ошибка при входе: " + e.getMessage(), e);
         }
+
     }
 
     public boolean logout(String token)  {
@@ -78,9 +86,17 @@ public class AuthenticationService {
                 .map(Role::getRoleName)
                 .collect(Collectors.toList());
 
+        Long groupId = null;
+        String groupName = null;
+
+        if (user.getGroup() != null) {
+            groupId = user.getGroup().getId();
+            groupName = user.getGroup().getName();
+        }
 
         return new UserDTO(user.getId(), user.getEmail(), user.getUserName(), user.getPhoneNumber(),
-                user.getBirthday(), roleNames, user.getGroup().getId(), user.getGroup().getName(), token);
+                user.getBirthday(), roleNames, groupId, groupName, token);
     }
+
 }
 
