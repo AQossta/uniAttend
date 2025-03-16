@@ -73,7 +73,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         String authToken = request.getHeader("auth-token");
 
         if (authToken != null && !authToken.isEmpty()) {
-            Session sessionOpt = validateSession(authToken);
+            String cleanToken = authToken.startsWith("Bearer ") ?
+                    authToken.substring(7) : authToken;
+
+            System.out.println("token = " + cleanToken);
+            Session sessionOpt = validateSession(cleanToken);
             User user = sessionOpt.getUser();
             List<Role> roles = roleRepository.getAllForUserId(user.getId());
             request.setAttribute("user", user);
