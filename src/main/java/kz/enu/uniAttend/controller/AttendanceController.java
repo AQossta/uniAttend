@@ -17,8 +17,8 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/scan")
-    public MessageResponse<?> scanQrCode(@RequestBody ScanRequest request, @PathVariable Long studentId) throws Exception {
-            AttendanceDTO response = attendanceService.scanQrCode(request, studentId);
+    public MessageResponse<?> scanQrCode(@RequestBody ScanRequest request) throws Exception {
+            AttendanceDTO response = attendanceService.processAttendance(request);
             return MessageResponse.of(ResponseEntity.ok(response));
     }
 

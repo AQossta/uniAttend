@@ -59,7 +59,7 @@ CREATE TABLE t_schedules (
 -- QR-коды
 CREATE TABLE t_qr_codes (
     id SERIAL PRIMARY KEY,
-    qr_code TEXT NOT NULL,
+    qr_code VARCHAR(10000) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     expiration TIMESTAMP NOT NULL
 );

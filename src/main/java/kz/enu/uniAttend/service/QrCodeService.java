@@ -26,16 +26,14 @@ public class QrCodeService {
     private static final int QR_EXPIRATION_MINUTES = 15;
 
 
-    public String generateQrCode(Long scheduleId) throws Exception {
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new Exception("Schedule not found"));
+    public QRCode generateQrCode(Long scheduleId) throws Exception {
 
-        String qrContent = "schedule:" + scheduleId + ":" + UUID.randomUUID().toString();
+        String qrContent = "schedule:" + scheduleId + ":" + UUID.randomUUID();
         BitMatrix bitMatrix = new QRCodeWriter().encode(
                 qrContent,
                 BarcodeFormat.QR_CODE,
-                200,
-                200
+                400,
+                400
         );
 
         ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
@@ -53,7 +51,7 @@ public class QrCodeService {
         qrForSchedule.setQrCode(qrCodeRepository.findById(qrCode.getId()).orElseThrow(() -> new RuntimeException("QR not found")));
         qrForScheduleRepository.save(qrForSchedule);
 
-        return qrCodeBase64;
+        return qrCode;
     }
 
 

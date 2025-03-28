@@ -94,6 +94,7 @@ public class AuthenticationService {
             groupName = user.getGroup().getName();
         }
 
+
         return new UserDTO(user.getId(), user.getEmail(), user.getUserName(), user.getPhoneNumber(),
                 user.getBirthday(), roleNames, groupId, groupName, token);
     }

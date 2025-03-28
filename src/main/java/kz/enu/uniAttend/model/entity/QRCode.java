@@ -16,7 +16,7 @@ public class QRCode {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "qr_code", nullable = false)
+    @Column(name = "qr_code", nullable = false, columnDefinition = "TEXT")
     private String qrCode;
 
     @Column(name = "created_at", nullable = false)

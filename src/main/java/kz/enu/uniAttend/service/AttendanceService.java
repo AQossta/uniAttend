@@ -1,22 +1,21 @@
 package kz.enu.uniAttend.service;
 
+import kz.enu.uniAttend.exception.*;
 import kz.enu.uniAttend.model.DTO.AttendanceDTO;
-import kz.enu.uniAttend.model.entity.Attendance;
-import kz.enu.uniAttend.model.entity.QRCode;
-import kz.enu.uniAttend.model.entity.QRForSchedule;
+import kz.enu.uniAttend.model.entity.*;
 import kz.enu.uniAttend.model.request.ScanRequest;
-import kz.enu.uniAttend.repository.AttendanceRepository;
-import kz.enu.uniAttend.repository.QrCodeRepository;
-import kz.enu.uniAttend.repository.QrForScheduleRepository;
-import kz.enu.uniAttend.repository.UserRepository;
+import kz.enu.uniAttend.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
@@ -24,46 +23,82 @@ public class AttendanceService {
     private final QrCodeRepository qrCodeRepository;
     private final QrForScheduleRepository qrForScheduleRepository;
     private final UserRepository userRepository;
+    private final ScheduleRepository scheduleRepository;
 
-    // Координаты университета (пример для Астаны)
     private static final double UNIVERSITY_LAT = 51.1605;
     private static final double UNIVERSITY_LON = 71.4704;
-    private static final double MAX_DISTANCE_KM = 0.5; // 500 метров
+    private static final double MAX_DISTANCE_KM = 0.5;
 
+    @Transactional
+    public AttendanceDTO processAttendance(ScanRequest request) {
+        // 1. Валидация входных данных
+        validateRequest(request);
 
-    public AttendanceDTO scanQrCode(ScanRequest request, Long userId) throws Exception {
-        // Проверка существования QR-кода
-        QRCode qrCode = qrCodeRepository.findById(request.getQrCodeId())
-                .orElseThrow(() -> new Exception("QR code not found"));
+        // 2. Получение и проверка сущностей
+        User user = getUser(request.getUserId());
+        Schedule schedule = getSchedule(request.getScheduleId());
+        QRCode qrCode = validateActiveQrCodeForSchedule(schedule.getId());
 
-        // Проверка срока действия QR-кода
-        if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
-            throw new Exception("QR code expired");
-        }
+        // 3. Проверка геолокации
+        validateLocation(request.getLatitude(), request.getLongitude());
 
-        // Проверка геолокации
-        if (!isWithinUniversityArea(request.getLatitude(), request.getLongitude())) {
-            throw new Exception("You are not within university area");
-        }
+        // 4. Проверка дублирования сканирования
+        checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
 
-        // Получение scheduleId из связи QR-кода
-        QRForSchedule qrForSchedule = qrForScheduleRepository.findByQrCodeId(request.getQrCodeId())
-                .orElseThrow(() -> new Exception("Schedule not found for this QR"));
-
-        // Проверка существования пользователя
-        userRepository.findById(userId)
-                .orElseThrow(() -> new Exception("User not found"));
-
-        // Сохранение записи посещаемости
-        Attendance attendance = new Attendance();
-        attendance.setUser(userRepository.findById(userId).orElseThrow(() -> new Exception("User not found")));
-        attendance.setSchedule(qrForSchedule.getSchedule());
-        attendance.setScanTime(LocalDateTime.now());
-        attendance.setScanType(Attendance.ScanType.valueOf(request.getScanType()));
+        // 5. Сохранение посещаемости
+        Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
 
-        // Расчет и возврат результата
-        return calculateAttendance(userId, qrForSchedule.getSchedule().getId());
+        log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
+
+        return calculateAttendanceStats(request.getUserId(), schedule.getId());
+    }
+
+    private void validateRequest(ScanRequest request) {
+        if (request == null) {
+            throw new RuntimeException("Scan request cannot be null");
+        }
+        if (request.getScheduleId() == null) {
+            throw new RuntimeException("Schedule ID is required");
+        }
+        if (request.getScanType() == null ||
+                (!request.getScanType().equals("IN") && !request.getScanType().equals("OUT"))) {
+            throw new RuntimeException("Invalid scan type");
+        }
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+    }
+
+    private Schedule getSchedule(Long scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + scheduleId));
+    }
+
+    private QRCode validateActiveQrCodeForSchedule(Long scheduleId) {
+        QRForSchedule qrForSchedule = qrForScheduleRepository
+                .findFirstByScheduleIdOrderByQrCodeCreatedAtDesc(scheduleId)
+                .orElseThrow(() -> new RuntimeException("No QR code found for schedule"));
+
+        QRCode qrCode = qrForSchedule.getQrCode();
+
+        if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("QR code has expired");
+        }
+
+        return qrCode;
+    }
+
+    private void validateLocation(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            throw new RuntimeException("Location data is required");
+        }
+
+        if (!isWithinUniversityArea(latitude, longitude)) {
+            throw new RuntimeException("You are not within university area");
+        }
     }
 
     private boolean isWithinUniversityArea(double lat, double lon) {
@@ -72,18 +107,35 @@ public class AttendanceService {
     }
 
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        // Формула Haversine для расчета расстояния между двумя точками
-        double R = 6371; // Радиус Земли в км
+        final double R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
+
         double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
                         Math.sin(dLon/2) * Math.sin(dLon/2);
+
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c;
     }
 
-    private AttendanceDTO calculateAttendance(Long userId, Long scheduleId) {
+    private void checkDuplicateScan(Long userId, Long scheduleId, String scanType) {
+        if (attendanceRepository.existsByUserIdAndScheduleIdAndScanType(
+                userId, scheduleId, Attendance.ScanType.valueOf(scanType))) {
+            throw new RuntimeException("You have already scanned " + scanType + " for this class");
+        }
+    }
+
+    private Attendance createAttendance(User user, Schedule schedule, String scanType) {
+        Attendance attendance = new Attendance();
+        attendance.setUser(user);
+        attendance.setSchedule(schedule);
+        attendance.setScanTime(LocalDateTime.now());
+        attendance.setScanType(Attendance.ScanType.valueOf(scanType));
+        return attendance;
+    }
+
+    private AttendanceDTO calculateAttendanceStats(Long userId, Long scheduleId) {
         List<Attendance> attendances = attendanceRepository
                 .findByUserIdAndScheduleIdOrderByScanTimeAsc(userId, scheduleId);
 
@@ -91,73 +143,26 @@ public class AttendanceService {
         response.setUserId(userId);
         response.setScheduleId(scheduleId);
 
-        Optional<Attendance> inScan = attendances.stream()
-                .filter(a -> "IN".equals(a.getScanType()))
-                .findFirst();
+        Optional<Attendance> inScan = findFirstScanByType(attendances, Attendance.ScanType.IN);
+        Optional<Attendance> outScan = findFirstScanByType(attendances, Attendance.ScanType.OUT);
 
-        Optional<Attendance> outScan = attendances.stream()
-                .filter(a -> "OUT".equals(a.getScanType()))
-                .findFirst();
-
-        if (inScan.isPresent()) {
-            response.setScanInTime(inScan.get().getScanTime());
-        }
-
-        if (outScan.isPresent()) {
-            response.setScanOutTime(outScan.get().getScanTime());
-        }
+        inScan.ifPresent(att -> response.setScanInTime(att.getScanTime()));
+        outScan.ifPresent(att -> response.setScanOutTime(att.getScanTime()));
 
         if (inScan.isPresent() && outScan.isPresent()) {
             long minutes = ChronoUnit.MINUTES.between(
                     inScan.get().getScanTime(),
                     outScan.get().getScanTime()
             );
-            response.setMinutesPresent(minutes > 0 ? minutes : 0);
+            response.setMinutesPresent(Math.max(minutes, 0));
         }
 
         return response;
     }
+
+    private Optional<Attendance> findFirstScanByType(List<Attendance> attendances, Attendance.ScanType type) {
+        return attendances.stream()
+                .filter(a -> type.equals(a.getScanType()))
+                .findFirst();
+    }
 }
-
-
-
-
-//__---------------------------------------------------- Мнау обьяснение -----------------------------------------
-//Полное объяснение:
-//Назначение сервиса:
-//
-//AttendanceService отвечает за обработку сканирования QR-кодов студентами, проверку геолокации и подсчет времени присутствия на занятии. Он взаимодействует с базой данных через репозитории и предоставляет функциональность для регистрации входа (IN) и выхода (OUT) студентов.
-//Основные компоненты:
-//
-//Поля и зависимости:
-//Репозитории (attendanceRepository, qrCodeRepository, и т.д.) используются для доступа к данным.
-//        Константы UNIVERSITY_LAT, UNIVERSITY_LON, и MAX_DISTANCE_KM задают координаты университета и допустимый радиус присутствия.
-//Конструктор использует внедрение зависимостей через Spring (@Autowired).
-//Метод scanQrCode:
-//Это основной публичный метод, который вызывается при сканировании QR-кода.
-//        Принимает ScanRequest (содержит ID QR-кода, координаты и тип сканирования) и userId.
-//Выполняет последовательность проверок и операций:
-//Проверяет существование QR-кода.
-//Проверяет срок действия QR-кода.
-//        Проверяет, находится ли студент в пределах университета.
-//Находит связь между QR-кодом и расписанием.
-//Проверяет существование пользователя.
-//Сохраняет запись посещаемости.
-//Рассчитывает и возвращает результат.
-//Метод isWithinUniversityArea:
-//Вспомогательный приватный метод для проверки геолокации.
-//Вычисляет расстояние до университета и сравнивает его с максимальным допустимым значением.
-//Метод calculateDistance:
-//Реализует формулу Haversine для точного расчета расстояния между двумя точками на поверхности Земли.
-//Использует широту и долготу в радианах для вычислений.
-//Метод calculateAttendance:
-//Рассчитывает время присутствия на основе записей входа и выхода.
-//Ищет первую запись IN и первую запись OUT для заданного пользователя и расписания.
-//Вычисляет разницу во времени в минутах, если обе записи присутствуют.
-//
-//        Особенности:
-//
-//Обработка ошибок: Метод выбрасывает исключения с понятными сообщениями при любых проблемах (например, истекший QR-код или неверная геолокация).
-//Триггер базы данных: Логика сервиса полагается на триггер attendance_order_trigger из вашей схемы для проверки порядка IN/OUT.
-//        Гибкость: Константы геолокации можно легко изменить для другого университета.
-//Точность: Использование формулы Haversine обеспечивает точный расчет расстояния с учетом сферической формы Земли.

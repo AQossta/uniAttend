@@ -10,4 +10,6 @@ public interface QrForScheduleRepository extends JpaRepository<QRForSchedule, Lo
     Optional<QRForSchedule> findByQrCodeId(Long qrCodeId);
 
     Optional<QRForSchedule> findByScheduleId(Long scheduleId);
+
+    Optional<QRForSchedule> findFirstByScheduleIdOrderByQrCodeCreatedAtDesc(Long scheduleId);
 }
