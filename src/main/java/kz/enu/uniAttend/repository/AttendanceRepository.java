@@ -9,4 +9,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByUserIdAndScheduleIdOrderByScanTimeAsc(Long userId, Long scheduleId);
 
     boolean existsByUserIdAndScheduleIdAndScanType(Long userId, Long scheduleId, Attendance.ScanType scanType);
+
+    List<Attendance> findByScheduleId(Long scheduleId);
 }

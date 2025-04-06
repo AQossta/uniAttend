@@ -20,13 +20,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
-    private final QrCodeRepository qrCodeRepository;
     private final QrForScheduleRepository qrForScheduleRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
 
-    private static final double UNIVERSITY_LAT = 51.1605;
-    private static final double UNIVERSITY_LON = 71.4704;
+    private static final double UNIVERSITY_LAT = 51.15980899270086;
+    private static final double UNIVERSITY_LON = 71.46491875786816;
     private static final double MAX_DISTANCE_KM = 0.5;
 
     @Transactional

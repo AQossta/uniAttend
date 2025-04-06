@@ -1,24 +1,14 @@
 package kz.enu.uniAttend.service;
 
-import kz.enu.uniAttend.exception.AuthenticationErrorException;
 import kz.enu.uniAttend.exception.InvalidPasswordException;
 import kz.enu.uniAttend.exception.UserAlreadyExistsException;
 import kz.enu.uniAttend.model.DTO.UserDTO;
-import kz.enu.uniAttend.model.entity.Group;
 import kz.enu.uniAttend.model.entity.Role;
-import kz.enu.uniAttend.model.entity.Session;
 import kz.enu.uniAttend.model.entity.User;
-import kz.enu.uniAttend.model.request.LoginRequest;
 import kz.enu.uniAttend.model.request.RegisterRequest;
-import kz.enu.uniAttend.repository.GroupRepository;
-import kz.enu.uniAttend.repository.RoleRepository;
-import kz.enu.uniAttend.repository.UserRepository;
 import kz.enu.uniAttend.util.encoder.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 

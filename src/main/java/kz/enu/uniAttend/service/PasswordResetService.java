@@ -4,18 +4,17 @@ import kz.enu.uniAttend.exception.SessionHasExpiredException;
 import kz.enu.uniAttend.model.entity.User;
 import kz.enu.uniAttend.model.request.PasswordResetRequest;
 import kz.enu.uniAttend.util.encoder.PasswordEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
+@RequiredArgsConstructor
 public class PasswordResetService {
-    @Autowired
-    private SessionService sessionService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final  SessionService sessionService;
+    private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
+
     public String editUser(
             @RequestBody PasswordResetRequest passwordResetRequest
     ) {

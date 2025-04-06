@@ -15,4 +15,6 @@ public interface UserRepository extends CrudRepository<User, Long> {
      boolean existsByEmail(String email);
 
      Optional<User> findByEmail(String email);
+
+    double countByGroupId(Long groupId);
 }

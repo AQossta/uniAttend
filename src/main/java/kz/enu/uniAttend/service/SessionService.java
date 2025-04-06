@@ -5,6 +5,7 @@ import kz.enu.uniAttend.model.entity.Session;
 import kz.enu.uniAttend.model.entity.User;
 import kz.enu.uniAttend.repository.SessionRepository;
 import kz.enu.uniAttend.util.token.TokenGenerator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,13 +16,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class SessionService {
-    @Autowired
-    private SessionRepository sessionRepository;
-    @Autowired
-    private TokenGenerator tokenGenerator;
-    @Autowired
-    private UserService userService;
+    private final SessionRepository sessionRepository;
+    private final TokenGenerator tokenGenerator;
+    private final UserService userService;
+
     public Session generateForUser(Long userId) {
         Session session = new Session();
         String token = tokenGenerator.generate();

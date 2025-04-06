@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@RequiredArgsConstructor
 @Service
+@RequiredArgsConstructor
 public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
@@ -46,9 +46,9 @@ public class ScheduleService {
         return "Предмет успешно добавлен в расписание";
     }
 
-    public ScheduleDTO getScheduleById(Long scheduleId) throws Exception {
+    public ScheduleDTO getScheduleById(Long scheduleId) {
         return convertToScheduleDTO(scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new Exception("Schedule not found")));
+                .orElseThrow(() -> new RuntimeException("Schedule not found")));
     }
 
     public List<ScheduleDTO> getSchedulesByGroup(Long groupId) {
