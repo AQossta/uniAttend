@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class ScanRequest {
     private Long userId;
-    private String code; // вместо scheduleId
+    private Long scheduleId; // вместо scheduleId
     private String scanType;
     private Double latitude;
     private Double longitude;

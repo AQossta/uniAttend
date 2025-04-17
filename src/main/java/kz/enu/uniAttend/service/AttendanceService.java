@@ -1,14 +1,15 @@
 package kz.enu.uniAttend.service;
 
-import kz.enu.uniAttend.exception.*;
 import kz.enu.uniAttend.model.DTO.AttendanceDTO;
 import kz.enu.uniAttend.model.entity.*;
 import kz.enu.uniAttend.model.request.ScanRequest;
 import kz.enu.uniAttend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -20,7 +21,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
-    private final QrForScheduleRepository qrForScheduleRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
 
@@ -32,7 +32,7 @@ public class AttendanceService {
     public AttendanceDTO processAttendance(ScanRequest request) {
         validateRequest(request);
         User user = getUser(request.getUserId());
-        Long scheduleId = validateAndExtractScheduleIdFromQrCode(request.getCode());
+        Long scheduleId = validateScheduleId(request.getScheduleId());
         Schedule schedule = getSchedule(scheduleId);
 
         validateLocation(request.getLatitude(), request.getLongitude());
@@ -40,77 +40,58 @@ public class AttendanceService {
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
-        return calculateAttendanceStats(request.getUserId(), schedule.getId());
+
+        AttendanceDTO stats = calculateAttendanceStats(request.getUserId(), schedule.getId());
+        return stats;
     }
 
     private void validateRequest(ScanRequest request) {
         if (request == null) {
-            throw new RuntimeException("Scan request cannot be null");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Scan request cannot be null");
         }
         if (request.getUserId() == null) {
-            throw new RuntimeException("User ID is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User ID is required");
         }
-        if (request.getScanType() == null ||
-                (!request.getScanType().equals("IN") && !request.getScanType().equals("OUT"))) {
-            throw new RuntimeException("Invalid scan type");
+        if (request.getScheduleId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Schedule ID is required");
         }
-        if (request.getCode() == null || request.getCode().isEmpty()) {
-            throw new RuntimeException("QR code is required");
+        if (request.getScanType() == null || request.getScanType().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Scan type is required");
+        }
+        try {
+            Attendance.ScanType.valueOf(request.getScanType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid scan type: " + request.getScanType());
         }
     }
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + userId));
     }
 
     private Schedule getSchedule(Long scheduleId) {
         return scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + scheduleId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Schedule not found with ID: " + scheduleId));
     }
 
-    private Long validateAndExtractScheduleIdFromQrCode(String qrCodeContent) {
-        // Проверяем формат QR-кода
-        if (!qrCodeContent.startsWith("schedule:") || qrCodeContent.split(":").length != 3) {
-            throw new RuntimeException("Invalid QR code format");
+    private Long validateScheduleId(Long scheduleId) {
+        if (scheduleId == null || scheduleId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid schedule ID");
         }
-
-        try {
-            // Извлекаем scheduleId из QR-кода
-            String[] parts = qrCodeContent.split(":");
-            Long scheduleId = Long.parseLong(parts[1]);
-
-            // Проверяем, существует ли активный QR-код для данного scheduleId
-            QRForSchedule qrForSchedule = qrForScheduleRepository
-                    .findFirstByScheduleIdOrderByQrCodeCreatedAtDesc(scheduleId)
-                    .orElseThrow(() -> new RuntimeException("No QR code found for schedule"));
-
-            QRCode qrCode = qrForSchedule.getQrCode();
-
-            // Проверяем, не истёк ли срок действия QR-кода
-            if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("QR code has expired");
-            }
-
-            // Проверяем, совпадает ли содержимое QR-кода
-            String expectedQrContent = "schedule:" + scheduleId + ":" + parts[2];
-            if (!qrCodeContent.equals(expectedQrContent)) {
-                throw new RuntimeException("Invalid QR code content");
-            }
-
-            return scheduleId;
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("Invalid schedule ID in QR code");
-        }
+        return scheduleId;
     }
 
     private void validateLocation(Double latitude, Double longitude) {
-        if (latitude == null || longitude == null) {
-            throw new RuntimeException("Location data is required");
+        if (latitude == null || longitude == null || latitude == 0.0 || longitude == 0.0) {
+            log.warn("Invalid location data: latitude={}, longitude={}", latitude, longitude);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid location data is required");
         }
 
         if (!isWithinUniversityArea(latitude, longitude)) {
-            throw new RuntimeException("You are not within university area");
+            log.info("Location check failed: latitude={}, longitude={}, distance={} km",
+                    latitude, longitude, calculateDistance(latitude, longitude, UNIVERSITY_LAT, UNIVERSITY_LON));
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You are not within university area");
         }
     }
 
@@ -134,8 +115,8 @@ public class AttendanceService {
 
     private void checkDuplicateScan(Long userId, Long scheduleId, String scanType) {
         if (attendanceRepository.existsByUserIdAndScheduleIdAndScanType(
-                userId, scheduleId, Attendance.ScanType.valueOf(scanType))) {
-            throw new RuntimeException("You have already scanned " + scanType + " for this class");
+                userId, scheduleId, Attendance.ScanType.valueOf(scanType.toUpperCase()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You have already scanned " + scanType + " for this class");
         }
     }
 
@@ -144,7 +125,7 @@ public class AttendanceService {
         attendance.setUser(user);
         attendance.setSchedule(schedule);
         attendance.setScanTime(LocalDateTime.now());
-        attendance.setScanType(Attendance.ScanType.valueOf(scanType));
+        attendance.setScanType(Attendance.ScanType.valueOf(scanType.toUpperCase()));
         return attendance;
     }
 
