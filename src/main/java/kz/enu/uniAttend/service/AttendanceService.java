@@ -30,26 +30,16 @@ public class AttendanceService {
 
     @Transactional
     public AttendanceDTO processAttendance(ScanRequest request) {
-        // 1. Валидация входных данных
         validateRequest(request);
-
-        // 2. Получение и проверка сущностей
         User user = getUser(request.getUserId());
-        Schedule schedule = getSchedule(request.getScheduleId());
-        QRCode qrCode = validateActiveQrCodeForSchedule(schedule.getId());
+        Long scheduleId = validateAndExtractScheduleIdFromQrCode(request.getCode());
+        Schedule schedule = getSchedule(scheduleId);
 
-        // 3. Проверка геолокации
         validateLocation(request.getLatitude(), request.getLongitude());
-
-        // 4. Проверка дублирования сканирования
         checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
-
-        // 5. Сохранение посещаемости
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
-
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
-
         return calculateAttendanceStats(request.getUserId(), schedule.getId());
     }
 
@@ -57,12 +47,15 @@ public class AttendanceService {
         if (request == null) {
             throw new RuntimeException("Scan request cannot be null");
         }
-        if (request.getScheduleId() == null) {
-            throw new RuntimeException("Schedule ID is required");
+        if (request.getUserId() == null) {
+            throw new RuntimeException("User ID is required");
         }
         if (request.getScanType() == null ||
                 (!request.getScanType().equals("IN") && !request.getScanType().equals("OUT"))) {
             throw new RuntimeException("Invalid scan type");
+        }
+        if (request.getCode() == null || request.getCode().isEmpty()) {
+            throw new RuntimeException("QR code is required");
         }
     }
 
@@ -76,18 +69,39 @@ public class AttendanceService {
                 .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + scheduleId));
     }
 
-    private QRCode validateActiveQrCodeForSchedule(Long scheduleId) {
-        QRForSchedule qrForSchedule = qrForScheduleRepository
-                .findFirstByScheduleIdOrderByQrCodeCreatedAtDesc(scheduleId)
-                .orElseThrow(() -> new RuntimeException("No QR code found for schedule"));
-
-        QRCode qrCode = qrForSchedule.getQrCode();
-
-        if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("QR code has expired");
+    private Long validateAndExtractScheduleIdFromQrCode(String qrCodeContent) {
+        // Проверяем формат QR-кода
+        if (!qrCodeContent.startsWith("schedule:") || qrCodeContent.split(":").length != 3) {
+            throw new RuntimeException("Invalid QR code format");
         }
 
-        return qrCode;
+        try {
+            // Извлекаем scheduleId из QR-кода
+            String[] parts = qrCodeContent.split(":");
+            Long scheduleId = Long.parseLong(parts[1]);
+
+            // Проверяем, существует ли активный QR-код для данного scheduleId
+            QRForSchedule qrForSchedule = qrForScheduleRepository
+                    .findFirstByScheduleIdOrderByQrCodeCreatedAtDesc(scheduleId)
+                    .orElseThrow(() -> new RuntimeException("No QR code found for schedule"));
+
+            QRCode qrCode = qrForSchedule.getQrCode();
+
+            // Проверяем, не истёк ли срок действия QR-кода
+            if (qrCode.getExpiration().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("QR code has expired");
+            }
+
+            // Проверяем, совпадает ли содержимое QR-кода
+            String expectedQrContent = "schedule:" + scheduleId + ":" + parts[2];
+            if (!qrCodeContent.equals(expectedQrContent)) {
+                throw new RuntimeException("Invalid QR code content");
+            }
+
+            return scheduleId;
+        } catch (NumberFormatException e) {
+            throw new RuntimeException("Invalid schedule ID in QR code");
+        }
     }
 
     private void validateLocation(Double latitude, Double longitude) {
