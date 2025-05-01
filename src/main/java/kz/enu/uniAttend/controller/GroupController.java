@@ -1,7 +1,7 @@
 package kz.enu.uniAttend.controller;
 
 import kz.enu.uniAttend.model.DTO.GroupDTO;
-import kz.enu.uniAttend.model.DTO.SubjectDTO;
+import kz.enu.uniAttend.model.request.GroupRequest;
 import kz.enu.uniAttend.service.GroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +20,8 @@ public class GroupController {
     }
 
     @PostMapping("/group")
-    public String addGroup(String name) {
-        return groupService.create(name);
+    public String addGroup(@RequestBody GroupRequest request) {
+        return groupService.create(request.getName());
     }
 
     @DeleteMapping("/group")
