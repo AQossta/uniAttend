@@ -56,13 +56,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Flyway -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-database-postgresql</artifactId>
-			<version>10.20.1</version>
-			<scope>runtime</scope>
-		</dependency>
+			<!-- Flyway -->
+			<dependency>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-database-postgresql</artifactId>
+				<version>10.20.1</version>
+				<scope>runtime</scope>
+			</dependency>
 
 		<!-- jBCrypt -->
 		<dependency>
