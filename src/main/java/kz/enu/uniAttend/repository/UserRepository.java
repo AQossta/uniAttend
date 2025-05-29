@@ -17,4 +17,6 @@ public interface UserRepository extends CrudRepository<User, Long> {
      Optional<User> findByEmail(String email);
 
     double countByGroupId(Long groupId);
+
+    List<User> findByGroupId(Long groupId);
 }

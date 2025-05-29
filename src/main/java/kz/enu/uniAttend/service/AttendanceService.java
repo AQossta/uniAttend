@@ -159,4 +159,6 @@ public class AttendanceService {
                 .filter(a -> type.equals(a.getScanType()))
                 .findFirst();
     }
+
+
 }
