@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,10 +24,10 @@ public class StatisticsPanelService {
     private final UserRepository userRepository;
     private final ScheduleService scheduleService;
 
+
     public StatisticsPanelDTO getAttendanceStatistics(Long scheduleId) {
         ScheduleDTO scheduleDTO = scheduleService.getScheduleById(scheduleId);
-        List<Attendance> attendances = attendanceRepository
-                .findByScheduleId(scheduleDTO.getId());
+        List<Attendance> attendances = attendanceRepository.findByScheduleId(scheduleDTO.getId());
         Long groupId = scheduleDTO.getGroupId();
         Double totalCount = (double) userRepository.countByGroupId(groupId);
         Double presentCount = (double) attendances.stream()
@@ -36,7 +37,10 @@ public class StatisticsPanelService {
                 .count();
         Double statistic = totalCount > 0 ? (presentCount / totalCount) * 100 : 0.0;
 
-        // Get all users in the group and create StudentDTO list
+        // Получаем время окончания занятия
+        LocalDateTime endTime = scheduleDTO.getEndTime();
+
+        // Получаем всех пользователей в группе и создаем список StudentDTO
         List<User> users = userRepository.findByGroupId(groupId);
         List<StudentDTO> studentDTOs = users.stream().map(user -> {
             StudentDTO studentDTO = new StudentDTO();
@@ -44,11 +48,56 @@ public class StatisticsPanelService {
             studentDTO.setName(user.getUserName());
             studentDTO.setEmail(user.getEmail());
             studentDTO.setPhoneNumber(user.getPhoneNumber());
-            // Check if user has attendance record with ScanType.IN for this schedule
+
+            // Проверяем, есть ли запись посещения с ScanType.IN
             boolean attended = attendances.stream()
                     .anyMatch(att -> att.getScanType() == Attendance.ScanType.IN
                             && att.getUser().getId().equals(user.getId()));
             studentDTO.setAttend(attended);
+
+            // Рассчитываем время участия
+            if (attended) {
+                // Находим запись IN
+                Attendance inRecord = attendances.stream()
+                        .filter(att -> att.getScanType() == Attendance.ScanType.IN
+                                && att.getUser().getId().equals(user.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                // Находим запись OUT
+                Attendance outRecord = attendances.stream()
+                        .filter(att -> att.getScanType() == Attendance.ScanType.OUT
+                                && att.getUser().getId().equals(user.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (inRecord != null && inRecord.getScanTime() != null) {
+                    studentDTO.setAttendTime(inRecord.getScanTime());
+                    LocalDateTime endTimeForCalculation = outRecord != null && outRecord.getScanTime() != null
+                            ? outRecord.getScanTime()
+                            : endTime; // Если OUT отсутствует, используем endTime занятия
+
+                    if (endTimeForCalculation != null) {
+                        // Рассчитываем время участия в минутах
+                        long durationMinutes = ChronoUnit.MINUTES.between(
+                                inRecord.getScanTime(), endTimeForCalculation
+                        );
+                        studentDTO.setAttendanceDuration(durationMinutes);
+                        studentDTO.setExitTime(outRecord != null ? outRecord.getScanTime() : null);
+                    } else {
+                        studentDTO.setAttendanceDuration(0);
+                        studentDTO.setExitTime(null);
+                    }
+                } else {
+                    studentDTO.setAttendanceDuration(0);
+                    studentDTO.setExitTime(null);
+                }
+            } else {
+                studentDTO.setAttendTime(null);
+                studentDTO.setExitTime(null);
+                studentDTO.setAttendanceDuration(0);
+            }
+
             return studentDTO;
         }).collect(Collectors.toList());
 
