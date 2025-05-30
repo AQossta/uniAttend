@@ -4,13 +4,13 @@ import kz.enu.uniAttend.model.DTO.ScheduleDTO;
 import kz.enu.uniAttend.model.DTO.StatisticsPanelDTO;
 import kz.enu.uniAttend.model.DTO.StudentDTO;
 import kz.enu.uniAttend.model.entity.Attendance;
+import kz.enu.uniAttend.model.entity.Role;
 import kz.enu.uniAttend.model.entity.User;
 import kz.enu.uniAttend.repository.AttendanceRepository;
 import kz.enu.uniAttend.repository.ScheduleRepository;
 import kz.enu.uniAttend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -23,26 +23,46 @@ public class StatisticsPanelService {
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
     private final ScheduleService scheduleService;
+    private final RoleService roleService;
 
 
     public StatisticsPanelDTO getAttendanceStatistics(Long scheduleId) {
         ScheduleDTO scheduleDTO = scheduleService.getScheduleById(scheduleId);
         List<Attendance> attendances = attendanceRepository.findByScheduleId(scheduleDTO.getId());
         Long groupId = scheduleDTO.getGroupId();
-        Double totalCount = (double) userRepository.countByGroupId(groupId);
+
+        // Получаем всех пользователей в группе
+        List<User> users = userRepository.findByGroupId(groupId);
+
+        // Фильтруем только студентов
+        List<User> students = users.stream()
+                .filter(user -> {
+                    List<Role> roles = roleService.getAllForUserId(user.getId());
+                    return roles.stream().anyMatch(role -> "student".equalsIgnoreCase(role.getName()));
+                })
+                .collect(Collectors.toList());
+
+        // Считаем общее количество студентов
+        Double totalCount = (double) students.size();
+
+        // Считаем количество присутствующих студентов
         Double presentCount = (double) attendances.stream()
                 .filter(att -> att.getScanType() == Attendance.ScanType.IN)
                 .map(Attendance::getUser)
                 .distinct()
+                .filter(user -> {
+                    List<Role> roles = roleService.getAllForUserId(user.getId());
+                    return roles.stream().anyMatch(role -> "student".equalsIgnoreCase(role.getName()));
+                })
                 .count();
+
         Double statistic = totalCount > 0 ? (presentCount / totalCount) * 100 : 0.0;
 
         // Получаем время окончания занятия
         LocalDateTime endTime = scheduleDTO.getEndTime();
 
-        // Получаем всех пользователей в группе и создаем список StudentDTO
-        List<User> users = userRepository.findByGroupId(groupId);
-        List<StudentDTO> studentDTOs = users.stream().map(user -> {
+        // Создаем список StudentDTO только для студентов
+        List<StudentDTO> studentDTOs = students.stream().map(user -> {
             StudentDTO studentDTO = new StudentDTO();
             studentDTO.setId(user.getId());
             studentDTO.setName(user.getUserName());

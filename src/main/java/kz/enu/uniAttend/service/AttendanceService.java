@@ -24,8 +24,11 @@ public class AttendanceService {
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
 
-    private static final double UNIVERSITY_LAT = 51.15980899270086;
-    private static final double UNIVERSITY_LON = 71.46491875786816;
+//    private static final double UNIVERSITY_LAT = 51.15980899270086;
+//    private static final double UNIVERSITY_LON = 71.46491875786816;
+
+    private static final double UNIVERSITY_LAT = 43.223308537891185;
+    private static final double UNIVERSITY_LON = 76.85859152407674;
     private static final double MAX_DISTANCE_KM = 0.5;
 
     @Transactional
