@@ -35,5 +35,6 @@ public class RegisterRequest {
     private LocalDate birthday;
 
     private Long groupId;
+    private Long roleId;
 }
 

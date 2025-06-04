@@ -9,6 +9,8 @@ import kz.enu.uniAttend.model.request.RegisterRequest;
 import kz.enu.uniAttend.util.encoder.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,7 @@ public class AuthenticationService {
     private final GroupService groupService;
     private final RoleService roleService;
 
+    @Transactional
     public String register(RegisterRequest registerRequest) {
         if(userService.existsByUserEmail(registerRequest.getName())) {
             throw new UserAlreadyExistsException();
@@ -35,6 +38,7 @@ public class AuthenticationService {
             );
 //            (String email, String name, String password, String phoneNumber, LocalDate birthday, Group group, Role role)
             userService.saveUser(user);
+            roleService.addForUser(user.getId(), registerRequest.getRoleId());
             return "Пользователь успешно создан";
         }
     }

@@ -50,6 +50,9 @@ public class UserService {
         User user = userRepository.findById(request.getUserId()).orElseThrow(UserNotFoundException::new);
         user.setUserName(request.getUserName());
         user.setPhoneNumber(request.getPhone());
+        userRepository.save(user);
         return "Изменение успешно";
     }
 }
+
+

@@ -23,6 +23,7 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
+    private final JournalRepository journalRepository;
 
 //    private static final double UNIVERSITY_LAT = 51.15980899270086;
 //    private static final double UNIVERSITY_LON = 71.46491875786816;
@@ -42,10 +43,20 @@ public class AttendanceService {
         checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
+        addJournal(request.getUserId(), request.getScheduleId());
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
-
         AttendanceDTO stats = calculateAttendanceStats(request.getUserId(), schedule.getId());
         return stats;
+    }
+
+    private void addJournal(Long userId, Long scheduleId) {
+        User user = getUser(userId);
+        Schedule schedule = getSchedule(scheduleId);
+        String assessment = "0";
+        LocalDateTime dateCreate = LocalDateTime.now();
+
+        Journal journal = new Journal(user, schedule, assessment, dateCreate);
+        journalRepository.save(journal);
     }
 
     private void validateRequest(ScanRequest request) {

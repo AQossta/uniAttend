@@ -177,6 +177,17 @@ CREATE TABLE IF NOT EXISTS t_organization (
     UNIQUE (email, phone_number) -- Уникальные ограничения
 );
 
+CREATE TABLE t_journal (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL,
+    schedule_id BIGINT NOT NULL,
+    assessment  VARCHAR(10) NOT NULL,
+    date_create TIMESTAMP NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES t_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES t_schedules(id) ON DELETE CASCADE,
+    UNIQUE (user_id, schedule_id)
+);
+
 INSERT INTO t_groups (name, date_registration) VALUES
                                                    ('Group E-505', '2025-02-28');
 
@@ -184,13 +195,15 @@ INSERT INTO t_groups (name, date_registration) VALUES
 INSERT INTO t_users (user_name, password, email, phone_number, registration_date, email_verified, group_id)
 VALUES
     ('Azhar', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Azhar@gmail.com', '+77011112235', CURRENT_TIMESTAMP, false, 1),
-    ('Uchenik', '$2a$12$pBTccEPl6OZXXxCqT8PyPOW/WDLbAsTpFziKjYIVK.1PzoreTMq9S', 'Uchenik@gmail.com', '+77011112233', CURRENT_TIMESTAMP, false, 1);
+    ('Uchenik', '$2a$12$pBTccEPl6OZXXxCqT8PyPOW/WDLbAsTpFziKjYIVK.1PzoreTMq9S', 'Uchenik@gmail.com', '+77011112233', CURRENT_TIMESTAMP, false, 1),
+    ('Admin', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Admin@gmail.com', '+77011112231', CURRENT_TIMESTAMP, false, null);
 
 
 INSERT INTO t_roles (id, role_name)
 VALUES
     (1, 'teacher'),
-    (2, 'student');
+    (2, 'student'),
+    (3, 'admin');
 
 INSERT INTO t_user_roles (user_id, role_id)
 VALUES
