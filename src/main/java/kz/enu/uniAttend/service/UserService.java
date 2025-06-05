@@ -2,16 +2,22 @@ package kz.enu.uniAttend.service;
 
 import jakarta.transaction.Transactional;
 import kz.enu.uniAttend.exception.UserNotFoundException;
+import kz.enu.uniAttend.model.DTO.DefaultStudentDTO;
+import kz.enu.uniAttend.model.entity.Role;
 import kz.enu.uniAttend.model.entity.User;
 import kz.enu.uniAttend.model.request.user.UserDefaultUpdateRequest;
 import kz.enu.uniAttend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final  UserRepository userRepository;
+    private final RoleService roleService;
 
     public void saveUser(User user) {
         userRepository.save(user);
@@ -52,6 +58,10 @@ public class UserService {
         user.setPhoneNumber(request.getPhone());
         userRepository.save(user);
         return "Изменение успешно";
+    }
+
+    public Iterable<User> getAllUsers() {
+        return userRepository.findAll();
     }
 }
 

@@ -48,7 +48,6 @@ public class QrCodeService {
         hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
         hints.put(EncodeHintType.MARGIN, 4);
 
-        // Генерируем QR-код
         BitMatrix bitMatrix = new QRCodeWriter().encode(
                 qrContent,
                 BarcodeFormat.QR_CODE,
@@ -57,16 +56,10 @@ public class QrCodeService {
                 hints
         );
 
-        // Конвертируем в base64
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
         String qrCodeBase64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());
         System.out.println("Generated QR code Base64 length: " + qrCodeBase64.length());
-
-        // Удаляем старый QR-код
-        qrForScheduleRepository.deleteByScheduleId(scheduleId);
-        qrCodeRepository.deleteByScheduleId(scheduleId);
-        System.out.println("Deleted old QR codes for scheduleId: " + scheduleId);
 
         // Сохраняем новый QR-код
         QRCode qrCode = new QRCode();
@@ -76,12 +69,25 @@ public class QrCodeService {
         qrCodeRepository.save(qrCode);
         System.out.println("Saved new QR code for scheduleId: " + scheduleId);
 
-        // Привязываем QR-код к расписанию
-        QRForSchedule qrForSchedule = new QRForSchedule();
-        qrForSchedule.setSchedule(schedule);
-        qrForSchedule.setQrCode(qrCode);
-        qrForScheduleRepository.save(qrForSchedule);
-        System.out.println("Linked QR code to scheduleId: " + scheduleId);
+        // Проверка: есть ли уже связь schedule ↔ QRCode
+        QRForSchedule qrForSchedule = qrForScheduleRepository.findByScheduleId(scheduleId)
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        if (qrForSchedule != null) {
+            // Обновляем связь
+            qrForSchedule.setQrCode(qrCode);
+            qrForScheduleRepository.save(qrForSchedule);
+            System.out.println("Updated QRForSchedule with new QRCode for scheduleId: " + scheduleId);
+        } else {
+            // Создаем новую связь
+            QRForSchedule newQrForSchedule = new QRForSchedule();
+            newQrForSchedule.setSchedule(schedule);
+            newQrForSchedule.setQrCode(qrCode);
+            qrForScheduleRepository.save(newQrForSchedule);
+            System.out.println("Created new QRForSchedule for scheduleId: " + scheduleId);
+        }
 
         return qrCode;
     }

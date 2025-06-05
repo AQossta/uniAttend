@@ -194,7 +194,7 @@ INSERT INTO t_groups (name, date_registration) VALUES
 
 INSERT INTO t_users (user_name, password, email, phone_number, registration_date, email_verified, group_id)
 VALUES
-    ('Azhar', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Azhar@gmail.com', '+77011112235', CURRENT_TIMESTAMP, false, 1),
+    ('Azhar', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Azhar@gmail.com', '+77011112235', CURRENT_TIMESTAMP, false, null),
     ('Uchenik', '$2a$12$pBTccEPl6OZXXxCqT8PyPOW/WDLbAsTpFziKjYIVK.1PzoreTMq9S', 'Uchenik@gmail.com', '+77011112233', CURRENT_TIMESTAMP, false, 1),
     ('Admin', '$2a$12$Nr0hmjOjBmTaB0M91m.6Qu/Zm943j9Coq7NMWzpSX7UTFYe1m6nam', 'Admin@gmail.com', '+77011112231', CURRENT_TIMESTAMP, false, null);
 
@@ -208,9 +208,9 @@ VALUES
 INSERT INTO t_user_roles (user_id, role_id)
 VALUES
     (1, 1),
-    (1, 1),
     (2, 2),
-    (2, 2);
+    (3, 1),
+    (3, 3);
 
 INSERT INTO t_organization (
     bin, organization_name, email, owner_name, phone_number, website_link, address
