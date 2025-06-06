@@ -5,7 +5,7 @@ spring:
   application:
     name: uniAttend
   datasource:
-    url: jdbc:postgresql://uniattend:piVueBj0CXpK6QIjXhauc9ZkaLr77WNC@dpg-d11ir0s9c44c73fcphcg-a.oregon-postgres.render.com/uniattend_6v43
+    url: jdbc:postgresql://dpg-d11ir0s9c44c73fcphcg-a.oregon-postgres.render.com:5432/uniattend_6v43
     username: uniattend
     password: piVueBj0CXpK6QIjXhauc9ZkaLr77WNC
     driver-class-name: org.postgresql.Driver
