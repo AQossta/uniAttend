@@ -43,7 +43,7 @@ public class AttendanceService {
         checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
-        if (request.getScanType() == "OUT") {
+        if (request.getScanType() == "IN") {
             addJournal(request.getUserId(), request.getScheduleId());
         }
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
