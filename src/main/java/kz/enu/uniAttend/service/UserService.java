@@ -63,6 +63,25 @@ public class UserService {
     public Iterable<User> getAllUsers() {
         return userRepository.findAll();
     }
+
+    public List<DefaultStudentDTO> getAll() {
+        return userRepository.findAll().stream().map(this::convertToDefaultStudentDTO).toList();
+    }
+
+    @Transactional
+    public void deleteById(Long userId) {
+        userRepository.deleteById(userId);
+    }
+
+    private DefaultStudentDTO convertToDefaultStudentDTO(User user){
+        List<Role> roles = roleService.getAllForUserId(user.getId());
+        List<String> roleNames = roles.stream()
+                .map(Role::getRoleName)
+                .collect(Collectors.toList());
+
+
+        return new DefaultStudentDTO(user.getId(), user.getUserName(), user.getEmail(), user.getPhoneNumber(), user.getBirthday(), roleNames);
+    }
 }
 
 

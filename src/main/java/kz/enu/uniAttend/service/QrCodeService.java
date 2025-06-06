@@ -19,8 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -31,65 +34,81 @@ public class QrCodeService {
 
     private static final int QR_EXPIRATION_MINUTES = 15;
     private static final int QR_SIZE = 400;
+    private static final int MAX_QR_FOR_SCHEDULES = 3;
+
+    // Реестр блокировок для scheduleId
+    private final Map<Long, Object> locks = new ConcurrentHashMap<>();
+
+    private Object getLock(Long scheduleId) {
+        return locks.computeIfAbsent(scheduleId, k -> new Object());
+    }
 
     @Transactional
     public QRCode generateQrCode(Long scheduleId) throws Exception {
-        // Проверяем существование расписания
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + scheduleId));
-        System.out.println("Generating QR code for scheduleId: " + scheduleId);
+        synchronized (getLock(scheduleId)) { // Синхронизация по scheduleId
+            try {
+                // Проверяем существование расписания
+                Schedule schedule = scheduleRepository.findById(scheduleId)
+                        .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + scheduleId));
+                System.out.println("Generating QR code for scheduleId: " + scheduleId);
 
-        // Формируем содержимое QR-кода
-        String qrContent = String.valueOf(scheduleId);
-        System.out.println("QR content: " + qrContent);
+                // Формируем содержимое QR-кода
+                String qrContent = String.valueOf(scheduleId);
+                System.out.println("QR content: " + qrContent);
 
-        // Настраиваем параметры QR-кода
-        Map<EncodeHintType, Object> hints = new HashMap<>();
-        hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
-        hints.put(EncodeHintType.MARGIN, 4);
+                // Настраиваем параметры QR-кода
+                Map<EncodeHintType, Object> hints = new HashMap<>();
+                hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+                hints.put(EncodeHintType.MARGIN, 4);
 
-        BitMatrix bitMatrix = new QRCodeWriter().encode(
-                qrContent,
-                BarcodeFormat.QR_CODE,
-                QR_SIZE,
-                QR_SIZE,
-                hints
-        );
+                BitMatrix bitMatrix = new QRCodeWriter().encode(
+                        qrContent,
+                        BarcodeFormat.QR_CODE,
+                        QR_SIZE,
+                        QR_SIZE,
+                        hints
+                );
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
-        String qrCodeBase64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());
-        System.out.println("Generated QR code Base64 length: " + qrCodeBase64.length());
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
+                String qrCodeBase64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());
+                System.out.println("Generated QR code Base64 length: " + qrCodeBase64.length());
 
-        // Сохраняем новый QR-код
-        QRCode qrCode = new QRCode();
-        qrCode.setQrCode(qrCodeBase64);
-        qrCode.setCreatedAt(LocalDateTime.now());
-        qrCode.setExpiration(LocalDateTime.now().plusMinutes(QR_EXPIRATION_MINUTES));
-        qrCodeRepository.save(qrCode);
-        System.out.println("Saved new QR code for scheduleId: " + scheduleId);
+                // Сохраняем новый QR-код
+                QRCode qrCode = new QRCode();
+                qrCode.setQrCode(qrCodeBase64);
+                qrCode.setCreatedAt(LocalDateTime.now());
+                qrCode.setExpiration(LocalDateTime.now().plusMinutes(QR_EXPIRATION_MINUTES));
+                qrCodeRepository.save(qrCode);
+                System.out.println("Saved new QR code for scheduleId: " + scheduleId);
 
-        // Проверка: есть ли уже связь schedule ↔ QRCode
-        QRForSchedule qrForSchedule = qrForScheduleRepository.findByScheduleId(scheduleId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+                // Получаем существующие связи для scheduleId
+                List<QRForSchedule> existingQrForSchedules = qrForScheduleRepository.findAllByScheduleId(scheduleId);
+                System.out.println("Found " + existingQrForSchedules.size() + " existing QRForSchedule entries for scheduleId: " + scheduleId);
 
-        if (qrForSchedule != null) {
-            // Обновляем связь
-            qrForSchedule.setQrCode(qrCode);
-            qrForScheduleRepository.save(qrForSchedule);
-            System.out.println("Updated QRForSchedule with new QRCode for scheduleId: " + scheduleId);
-        } else {
-            // Создаем новую связь
-            QRForSchedule newQrForSchedule = new QRForSchedule();
-            newQrForSchedule.setSchedule(schedule);
-            newQrForSchedule.setQrCode(qrCode);
-            qrForScheduleRepository.save(newQrForSchedule);
-            System.out.println("Created new QRForSchedule for scheduleId: " + scheduleId);
+                // Если связей больше или равно 3, удаляем самую старую
+                if (existingQrForSchedules.size() >= MAX_QR_FOR_SCHEDULES) {
+                    QRForSchedule oldest = existingQrForSchedules.stream()
+                            .min(Comparator.comparing(qr -> qr.getQrCode().getCreatedAt()))
+                            .orElseThrow(() -> new IllegalStateException("Error finding oldest QRForSchedule"));
+                    qrForScheduleRepository.delete(oldest);
+                    qrCodeRepository.delete(oldest.getQrCode());
+                    System.out.println("Deleted oldest QRForSchedule and QRCode for scheduleId: " + scheduleId);
+                }
+
+                // Создаем новую связь
+                QRForSchedule newQrForSchedule = new QRForSchedule();
+                newQrForSchedule.setSchedule(schedule);
+                newQrForSchedule.setQrCode(qrCode);
+                qrForScheduleRepository.save(newQrForSchedule);
+                System.out.println("Created new QRForSchedule for scheduleId: " + scheduleId);
+
+                return qrCode;
+            } catch (Exception e) {
+                System.err.println("Error generating QR code for scheduleId: " + scheduleId + ", error: " + e.getMessage());
+                throw e;
+            }
         }
-
-        return qrCode;
     }
 
     @Transactional(readOnly = true)
@@ -98,17 +117,19 @@ public class QrCodeService {
                 .orElseThrow(() -> new IllegalArgumentException("Schedule not found with ID: " + scheduleId));
         System.out.println("Retrieving QR code for scheduleId: " + scheduleId);
 
-        QRForSchedule qrForSchedule = qrForScheduleRepository.findByScheduleId(scheduleId)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No QR code found for schedule ID: " + scheduleId));
-        System.out.println("Found QRForSchedule for scheduleId: " + scheduleId);
-
-        QRCode qrCode = qrForSchedule.getQrCode();
-        if (qrCode == null || qrCode.getExpiration().isBefore(LocalDateTime.now())) {
-            System.out.println("QR code not found or expired for scheduleId: " + scheduleId);
-            throw new IllegalStateException("QR code not found or expired for schedule ID: " + scheduleId);
+        List<QRForSchedule> qrForSchedules = qrForScheduleRepository.findAllByScheduleId(scheduleId);
+        if (qrForSchedules.isEmpty()) {
+            throw new IllegalArgumentException("No QR code found for schedule ID: " + scheduleId);
         }
+
+        // Находим самый последний действующий QR-код
+        QRForSchedule latestQrForSchedule = qrForSchedules.stream()
+                .filter(qr -> qr.getQrCode() != null && !qr.getQrCode().getExpiration().isBefore(LocalDateTime.now()))
+                .max(Comparator.comparing(qr -> qr.getQrCode().getCreatedAt()))
+                .orElseThrow(() -> new IllegalStateException("No valid QR code found for schedule ID: " + scheduleId));
+
+        System.out.println("Found QRForSchedule for scheduleId: " + scheduleId);
+        QRCode qrCode = latestQrForSchedule.getQrCode();
         System.out.println("Returning QR code for scheduleId: " + scheduleId);
         return qrCode.getQrCode();
     }

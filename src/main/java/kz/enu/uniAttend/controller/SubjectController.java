@@ -25,8 +25,8 @@ public class SubjectController {
         return subjectService.getAllSubjects();
     }
 
-    @DeleteMapping("/subject")
-    public String deleteSubject(Long id) {
-        return subjectService.deleteSubject(id);
+    @DeleteMapping("/subject/{subjectId}")
+    public String deleteSubject(@PathVariable Long subjectId) {
+        return subjectService.deleteSubject(subjectId);
     }
 }

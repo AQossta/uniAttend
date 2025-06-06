@@ -43,20 +43,28 @@ public class AttendanceService {
         checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
-        addJournal(request.getUserId(), request.getScheduleId());
+        if (request.getScanType() == "OUT") {
+            addJournal(request.getUserId(), request.getScheduleId());
+        }
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
         AttendanceDTO stats = calculateAttendanceStats(request.getUserId(), schedule.getId());
         return stats;
     }
 
     private void addJournal(Long userId, Long scheduleId) {
-        User user = getUser(userId);
-        Schedule schedule = getSchedule(scheduleId);
-        String assessment = "0";
-        LocalDateTime dateCreate = LocalDateTime.now();
+        if (journalRepository.existsByUserIdAndScheduleId(userId, scheduleId)) {
+            Journal journal = journalRepository.findByUserIdAndScheduleId(userId, scheduleId);
+            journal.setAssessment("0");
+            journalRepository.save(journal);
+        } else {
+            User user = getUser(userId);
+            Schedule schedule = getSchedule(scheduleId);
+            String assessment = "0";
+            LocalDateTime dateCreate = LocalDateTime.now();
 
-        Journal journal = new Journal(user, schedule, assessment, dateCreate);
-        journalRepository.save(journal);
+            Journal journal = new Journal(user, schedule, assessment, dateCreate);
+            journalRepository.save(journal);
+        }
     }
 
     private void validateRequest(ScanRequest request) {

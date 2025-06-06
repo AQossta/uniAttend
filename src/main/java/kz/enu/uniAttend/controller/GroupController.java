@@ -34,9 +34,9 @@ public class GroupController {
         return groupService.create(request.getName());
     }
 
-    @DeleteMapping("/group")
-    public String deleteGroup(Long id) {
-        return groupService.delete(id);
+    @DeleteMapping("/group/{groupId}")
+    public String deleteGroup(@PathVariable Long groupId) {
+        return groupService.delete(groupId);
     }
 
     @GetMapping("/group/{groupId}")

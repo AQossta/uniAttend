@@ -13,4 +13,8 @@ public interface JournalRepository extends JpaRepository<Journal, Long> {
     List<Journal> findAllByScheduleSubjectId(Long subjectId);
 
     List<Journal> findAllByScheduleSubjectIdAndScheduleGroupId(Long subjectId, Long groupId);
+
+    boolean existsByUserIdAndScheduleId(Long userId, Long scheduleId);
+
+    Journal findByUserIdAndScheduleId(Long userId, Long scheduleId);
 }
