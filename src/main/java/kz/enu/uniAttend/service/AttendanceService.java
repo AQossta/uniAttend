@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -25,8 +26,8 @@ public class AttendanceService {
     private final ScheduleRepository scheduleRepository;
     private final JournalRepository journalRepository;
 
-//    private static final double UNIVERSITY_LAT = 51.15980899270086;
-//    private static final double UNIVERSITY_LON = 71.46491875786816;
+//    private static final double UNIVERSITY_LAT = 43.22325179712994;
+//    private static final double UNIVERSITY_LON = 76.85847229256403;
 
     private static final double UNIVERSITY_LAT = 51.130651499563555;
     private static final double UNIVERSITY_LON = 71.23120986596695;
@@ -43,12 +44,9 @@ public class AttendanceService {
         checkDuplicateScan(request.getUserId(), schedule.getId(), request.getScanType());
         Attendance attendance = createAttendance(user, schedule, request.getScanType());
         attendanceRepository.save(attendance);
-        if (request.getScanType() == "IN") {
-            addJournal(request.getUserId(), request.getScheduleId());
-        }
+        addJournal(request.getUserId(), request.getScheduleId());
         log.info("Attendance recorded for user {} at schedule {}", request.getUserId(), schedule.getId());
-        AttendanceDTO stats = calculateAttendanceStats(request.getUserId(), schedule.getId());
-        return stats;
+        return calculateAttendanceStats(request.getUserId(), schedule.getId());
     }
 
     private void addJournal(Long userId, Long scheduleId) {
