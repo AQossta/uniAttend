@@ -29,8 +29,8 @@ public class AttendanceService {
 //    private static final double UNIVERSITY_LAT = 43.22325179712994;
 //    private static final double UNIVERSITY_LON = 76.85847229256403;
 
-    private static final double UNIVERSITY_LAT = 51.130651499563555;
-    private static final double UNIVERSITY_LON = 71.23120986596695;
+    private static final double UNIVERSITY_LAT = 51.159843418902085;
+    private static final double UNIVERSITY_LON = 71.46495919478849;
     private static final double MAX_DISTANCE_KM = 0.5;
 
     @Transactional
